@@ -17,6 +17,15 @@ public enum ProcessRunnerError: Error, LocalizedError, Sendable {
     public var errorDescription: String? {
         switch self {
         case .executableNotFound(let name):
+            if name == "container" {
+                return """
+                Executable not found: container
+
+                Install the Apple container CLI, then verify it works in Terminal:
+                  brew install container
+                  container system status
+                """
+            }
             return "Executable not found: \(name)"
         case .failedToStart(let msg):
             return "Failed to start process: \(msg)"
@@ -156,7 +165,9 @@ public struct ProcessRunner: Sendable {
             "/usr/sbin",
             "/sbin",
             "/usr/local/bin",
-            "/opt/homebrew/bin"
+            "/opt/homebrew/bin",
+            "/usr/local/opt/container/bin",
+            "/opt/homebrew/opt/container/bin"
         ]
 
         for dir in (pathParts + fallbacks) {

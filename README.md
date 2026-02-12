@@ -25,7 +25,7 @@ This starter intentionally focuses on a **small MVP** and a clean architecture s
 
 ## Requirements
 
-- macOS **26+**
+- macOS **26.2+**
 - Apple silicon
 - `container` CLI installed and working (try `container system status` in Terminal)
 
@@ -45,45 +45,18 @@ cd ContainerDeskCore
 swift test
 ```
 
-### 2) Create an Xcode project for the app
-1. Open Xcode → **File → New → Project…**
-2. Choose **macOS → App**
-3. Name: `ContainerDesk`
-4. Interface: **SwiftUI**
-5. Language: **Swift**
-6. Create the project
-
-### 3) Add `ContainerDeskCore` as a local Swift package
-- In Xcode: **File → Add Packages… → Add Local…**
-- Select the `ContainerDeskCore` folder
-- Add it to the `ContainerDesk` app target
-
-### 4) Add the app sources
-- Drag the entire `ContainerDeskApp/` folder into your Xcode project navigator
-- When prompted: **Copy items if needed** ✅ and add to the app target
-
-### 5) Wire up the app entrypoint
-Open your project’s default `*App.swift` file and set the root view + shared state:
-
-```swift
-import SwiftUI
-import ContainerDeskCore
-
-@main
-struct ContainerDeskApp: App {
-    @StateObject private var appState = AppState()
-
-    var body: some Scene {
-        WindowGroup {
-            RootView()
-                .environmentObject(appState)
-        }
-    }
-}
+### 2) Generate the app project (Swift 6 + macOS 26.2)
+```bash
+xcodegen generate
 ```
 
-### 6) Run
-Hit **⌘R**.
+This uses the checked-in `project.yml`, which sets:
+- Swift language mode: **Swift 6**
+- Deployment target: **macOS 26.2**
+- Strict concurrency: **Complete**
+
+### 3) Run from Xcode
+Open `ContainerDesk.xcodeproj` and hit **⌘R**.
 
 ---
 

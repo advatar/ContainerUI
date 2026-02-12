@@ -1,10 +1,10 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
     name: "ContainerDeskCore",
     platforms: [
-        .macOS(.v13)
+        .macOS("26.2")
     ],
     products: [
         .library(
@@ -22,5 +22,6 @@ let package = Package(
             name: "ContainerDeskCoreTests",
             dependencies: ["ContainerDeskCore"]
         ),
-    ]
+    ],
+    swiftLanguageModes: [.v6]
 )

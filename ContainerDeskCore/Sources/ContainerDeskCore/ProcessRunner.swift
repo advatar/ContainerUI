@@ -40,6 +40,94 @@ public struct OutputLine: Sendable, Hashable {
     public let line: String
 }
 
+private final class StreamLineState: @unchecked Sendable {
+    private let lock = NSLock()
+    private let newline = Data([0x0A]) // '\n'
+
+    private var outBuffer = Data()
+    private var errBuffer = Data()
+    private var stderrCollected = Data()
+    private var terminatedByUser = false
+
+    func appendStdout(_ data: Data, continuation: AsyncThrowingStream<OutputLine, Error>.Continuation) {
+        let lines: [OutputLine]
+        lock.lock()
+        outBuffer.append(data)
+        lines = drainLines(from: &outBuffer, source: .stdout, final: false)
+        lock.unlock()
+
+        for line in lines {
+            continuation.yield(line)
+        }
+    }
+
+    func appendStderr(_ data: Data, continuation: AsyncThrowingStream<OutputLine, Error>.Continuation) {
+        let lines: [OutputLine]
+        lock.lock()
+        stderrCollected.append(data)
+        errBuffer.append(data)
+        lines = drainLines(from: &errBuffer, source: .stderr, final: false)
+        lock.unlock()
+
+        for line in lines {
+            continuation.yield(line)
+        }
+    }
+
+    func markTerminatedByUser() {
+        lock.lock()
+        terminatedByUser = true
+        lock.unlock()
+    }
+
+    func flushAndSnapshot(
+        continuation: AsyncThrowingStream<OutputLine, Error>.Continuation
+    ) -> (terminatedByUser: Bool, collectedErr: String) {
+        let stdoutLines: [OutputLine]
+        let stderrLines: [OutputLine]
+        let wasTerminatedByUser: Bool
+        let collectedErr: String
+
+        lock.lock()
+        stdoutLines = drainLines(from: &outBuffer, source: .stdout, final: true)
+        stderrLines = drainLines(from: &errBuffer, source: .stderr, final: true)
+        wasTerminatedByUser = terminatedByUser
+        collectedErr = String(data: stderrCollected, encoding: .utf8) ?? ""
+        lock.unlock()
+
+        for line in stdoutLines {
+            continuation.yield(line)
+        }
+        for line in stderrLines {
+            continuation.yield(line)
+        }
+
+        return (terminatedByUser: wasTerminatedByUser, collectedErr: collectedErr)
+    }
+
+    private func drainLines(from buffer: inout Data, source: OutputSource, final: Bool) -> [OutputLine] {
+        var lines: [OutputLine] = []
+
+        while true {
+            guard let range = buffer.firstRange(of: newline) else { break }
+            let lineData = buffer.subdata(in: buffer.startIndex..<range.lowerBound)
+            buffer.removeSubrange(buffer.startIndex..<range.upperBound)
+            if let line = String(data: lineData, encoding: .utf8) {
+                lines.append(OutputLine(source: source, line: line))
+            }
+        }
+
+        if final, !buffer.isEmpty {
+            if let tail = String(data: buffer, encoding: .utf8) {
+                lines.append(OutputLine(source: source, line: tail))
+            }
+            buffer.removeAll(keepingCapacity: false)
+        }
+
+        return lines
+    }
+}
+
 /// Lightweight wrapper around `Process` for running the `container` CLI.
 public struct ProcessRunner: Sendable {
     public let executableNameOrPath: String
@@ -180,59 +268,22 @@ public struct ProcessRunner: Sendable {
             process.standardOutput = outPipe
             process.standardError = errPipe
 
-            // Line buffering
-            let lock = NSLock()
-            var outBuffer = Data()
-            var errBuffer = Data()
-            var stderrCollected = Data()
-            var terminatedByUser = false
-
-            func flushLines(from buffer: inout Data, source: OutputSource, final: Bool = false) {
-                // Split by \n
-                while true {
-                    if let range = buffer.firstRange(of: Data([0x0A])) { // '\n'
-                        let lineData = buffer.subdata(in: buffer.startIndex..<range.lowerBound)
-                        buffer.removeSubrange(buffer.startIndex..<range.upperBound)
-                        if let line = String(data: lineData, encoding: .utf8) {
-                            continuation.yield(OutputLine(source: source, line: line))
-                        }
-                    } else {
-                        break
-                    }
-                }
-
-                if final, !buffer.isEmpty {
-                    if let tail = String(data: buffer, encoding: .utf8) {
-                        continuation.yield(OutputLine(source: source, line: tail))
-                    }
-                    buffer.removeAll(keepingCapacity: false)
-                }
-            }
+            let streamState = StreamLineState()
 
             outPipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
                 guard !data.isEmpty else { return }
-                lock.lock()
-                outBuffer.append(data)
-                flushLines(from: &outBuffer, source: .stdout)
-                lock.unlock()
+                streamState.appendStdout(data, continuation: continuation)
             }
 
             errPipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
                 guard !data.isEmpty else { return }
-                lock.lock()
-                stderrCollected.append(data)
-                errBuffer.append(data)
-                flushLines(from: &errBuffer, source: .stderr)
-                lock.unlock()
+                streamState.appendStderr(data, continuation: continuation)
             }
 
             continuation.onTermination = { _ in
-                lock.lock()
-                terminatedByUser = true
-                lock.unlock()
-
+                streamState.markTerminatedByUser()
                 outPipe.fileHandleForReading.readabilityHandler = nil
                 errPipe.fileHandleForReading.readabilityHandler = nil
                 if process.isRunning {
@@ -252,14 +303,9 @@ public struct ProcessRunner: Sendable {
                 outPipe.fileHandleForReading.readabilityHandler = nil
                 errPipe.fileHandleForReading.readabilityHandler = nil
 
-                lock.lock()
-                flushLines(from: &outBuffer, source: .stdout, final: true)
-                flushLines(from: &errBuffer, source: .stderr, final: true)
-                let userTerminated = terminatedByUser
-                let collectedErr = String(data: stderrCollected, encoding: .utf8) ?? ""
-                lock.unlock()
+                let snapshot = streamState.flushAndSnapshot(continuation: continuation)
 
-                if userTerminated {
+                if snapshot.terminatedByUser {
                     continuation.finish()
                     return
                 }
@@ -269,7 +315,7 @@ public struct ProcessRunner: Sendable {
                         command: (process.executableURL?.path ?? executableNameOrPath),
                         arguments: arguments,
                         exitCode: process.terminationStatus,
-                        stderr: collectedErr
+                        stderr: snapshot.collectedErr
                     ))
                 } else {
                     continuation.finish()

@@ -17,6 +17,14 @@ public enum ProcessRunnerError: Error, LocalizedError, Sendable {
     public var errorDescription: String? {
         switch self {
         case .executableNotFound(let name):
+            if name == "docker" {
+                return """
+                Executable not found: docker
+
+                Install Docker Desktop (or Docker CLI), then verify it works in Terminal:
+                  docker version
+                """
+            }
             if name == "container" {
                 return """
                 Executable not found: container

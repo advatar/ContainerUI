@@ -22,17 +22,18 @@ struct SettingsView: View {
             }
 
             Section("Storage") {
-                Text("Apple Container typically stores data under: \n~/Library/Application Support/com.apple.container")
+                Text("Docker Desktop data is typically managed by Docker Desktop VM layers and user config under:\n~/.docker")
                     .font(.system(.body, design: .monospaced))
                     .textSelection(.enabled)
             }
 
             Section("Advanced") {
-                Text("Future: choose `container` binary path, enable DNS management helper, configure defaults for new containers.")
+                Text("Future: choose Docker CLI binary path, configure registry defaults, and tune resource limits.")
                     .foregroundStyle(.secondary)
             }
         }
         .padding()
         .navigationTitle("Settings")
+        .accessibilityIdentifier("screen-settings")
     }
 }

@@ -1,8 +1,6 @@
-# ContainerDesk Starter (Apple `container` Desktop UI)
+# ContainerDesk Starter (Docker Desktop-Style UI)
 
-This is a **starter codebase** for a macOS SwiftUI app that provides a Docker-Desktop-like experience on top of Apple’s **command-line** container runtime (`container`).
-
-- Apple Container project: [github.com/apple/container](https://github.com/apple/container)
+This is a **starter codebase** for a macOS SwiftUI app that provides a Docker-Desktop-like experience on top of the Docker CLI (`docker`), with compatibility fallbacks for Apple `container` commands where practical.
 
 ## What you get today
 
@@ -11,7 +9,8 @@ This is a **starter codebase** for a macOS SwiftUI app that provides a Docker-De
 - **Containers**: list, start, stop, delete, inspect, logs (follow), exec (opens Terminal)
 - **Images**: list, pull, delete, inspect
 - **Builder**: status (JSON when available), start/stop (hooks ready)
-- **Troubleshoot**: stream `container system logs --follow`
+- **Troubleshoot**: stream daemon-level events/log output
+- **Docker CLI parity surface**: run or stream arbitrary Docker commands from an in-app command center, with command catalog coverage for common, management, swarm, and runtime command groups
 
 ### UI included
 - Sidebar navigation (Dashboard, Containers, Images, Builds, Troubleshoot, Settings)
@@ -27,9 +26,9 @@ This starter intentionally focuses on a **small MVP** and a clean architecture s
 
 - macOS **26.2+**
 - Apple silicon
-- `container` CLI installed and working (try `container system status` in Terminal)
+- Docker CLI installed and working (try `docker info` in Terminal)
 
-> Note: Some features (like `container system dns create`) require admin privileges. This starter only uses non-privileged commands by default.
+> Note: Some Docker Desktop lifecycle and privileged operations may require elevated permissions.
 
 ---
 
@@ -57,6 +56,14 @@ This uses the checked-in `project.yml`, which sets:
 
 ### 3) Run from Xcode
 Open `ContainerDesk.xcodeproj` and hit **⌘R**.
+
+### 4) Run all tests (unit + UI)
+```bash
+xcodebuild test \
+  -project ContainerDesk.xcodeproj \
+  -scheme ContainerDesk \
+  -destination 'platform=macOS'
+```
 
 ---
 

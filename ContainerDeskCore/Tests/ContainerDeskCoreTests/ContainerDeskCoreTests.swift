@@ -51,4 +51,18 @@ final class ContainerDeskCoreTests: XCTestCase {
         XCTAssertEqual(img.reference, "nginx:latest")
         XCTAssertEqual(img.size, "100MB")
     }
+
+    func testCommandLineTokenizerSupportsQuotesAndEscapes() throws {
+        let tokens = try CommandLineTokenizer.tokenize("docker run --name \"my app\" -e FOO='bar baz' nginx:latest")
+        XCTAssertEqual(tokens, ["docker", "run", "--name", "my app", "-e", "FOO=bar baz", "nginx:latest"])
+    }
+
+    func testCommandLineTokenizerThrowsOnUnterminatedQuote() {
+        XCTAssertThrowsError(try CommandLineTokenizer.tokenize("docker run \"oops")) { error in
+            guard case CommandLineTokenizerError.unterminatedQuote = error else {
+                XCTFail("Expected unterminatedQuote error.")
+                return
+            }
+        }
+    }
 }

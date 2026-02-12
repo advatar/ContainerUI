@@ -76,6 +76,7 @@ struct ImagesView: View {
                 .frame(minWidth: 380)
         }
         .navigationTitle("Images")
+        .accessibilityIdentifier("screen-images")
         .toolbar {
             ToolbarItemGroup {
                 Button {

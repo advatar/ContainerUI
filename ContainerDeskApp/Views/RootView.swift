@@ -6,6 +6,7 @@ enum NavItem: String, CaseIterable, Identifiable {
     case containers = "Containers"
     case images = "Images"
     case builds = "Builds"
+    case dockerCLI = "Docker CLI"
     case troubleshoot = "Troubleshoot"
     case settings = "Settings"
 
@@ -17,6 +18,7 @@ enum NavItem: String, CaseIterable, Identifiable {
         case .containers: return "shippingbox"
         case .images: return "square.stack.3d.up"
         case .builds: return "hammer"
+        case .dockerCLI: return "terminal"
         case .troubleshoot: return "stethoscope"
         case .settings: return "gearshape"
         }
@@ -32,6 +34,7 @@ struct RootView: View {
             List(NavItem.allCases, selection: $selection) { item in
                 Label(item.rawValue, systemImage: item.systemImage)
                     .tag(item as NavItem?)
+                    .accessibilityIdentifier("nav-\(item.id)")
             }
             .navigationTitle("ContainerDesk")
         } detail: {
@@ -45,6 +48,8 @@ struct RootView: View {
                     ImagesView(engine: appState.engine)
                 case .builds:
                     BuildsView(engine: appState.engine)
+                case .dockerCLI:
+                    CommandCenterView(engine: appState.engine)
                 case .troubleshoot:
                     TroubleshootView(engine: appState.engine)
                 case .settings:

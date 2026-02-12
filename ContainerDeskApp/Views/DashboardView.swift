@@ -64,6 +64,7 @@ struct DashboardView: View {
             .padding()
         }
         .navigationTitle("Dashboard")
+        .accessibilityIdentifier("screen-dashboard")
         .task {
             await vm.refresh()
         }

@@ -52,6 +52,7 @@ struct BuildsView: View {
         }
         .padding()
         .navigationTitle("Builds")
+        .accessibilityIdentifier("screen-builds")
         .task { await vm.refresh() }
     }
 }

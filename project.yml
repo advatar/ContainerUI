@@ -27,3 +27,41 @@ targets:
     dependencies:
       - package: ContainerDeskCore
         product: ContainerDeskCore
+  ContainerDeskTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "26.2"
+    sources:
+      - path: ContainerDeskTests
+    dependencies:
+      - target: ContainerDesk
+      - package: ContainerDeskCore
+        product: ContainerDeskCore
+    settings:
+      base:
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/ContainerDesk.app/Contents/MacOS/ContainerDesk"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+  ContainerDeskUITests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "26.2"
+    sources:
+      - path: ContainerDeskUITests
+    dependencies:
+      - target: ContainerDesk
+    settings:
+      base:
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/ContainerDesk.app/Contents/MacOS/ContainerDesk"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  ContainerDesk:
+    build:
+      targets:
+        ContainerDesk: all
+    test:
+      targets:
+        - ContainerDeskTests
+        - ContainerDeskUITests

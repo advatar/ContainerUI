@@ -45,7 +45,7 @@ public struct ContainerSummary: Identifiable, Sendable, Hashable {
         let name = raw.firstString(forKeys: ["name", "names", "container", "containername"]) ?? id.prefix(12).description
         let image = raw.firstString(forKeys: ["image", "image_ref", "imageref", "imageid"]) ?? "(unknown)"
         let status = raw.firstString(forKeys: ["status", "state", "runningstate", "health"]) ?? ""
-        let createdAt = raw.firstString(forKeys: ["createdat", "created_at", "created", "age"])
+        let createdAt = raw.firstString(forKeys: ["createdat", "created_at", "created", "age", "createdsince", "runningfor"])
         let ports = raw.firstString(forKeys: ["ports", "publishedports", "publish", "published"])
         let ip = raw.firstString(forKeys: ["ip", "ipaddress", "ip_address", "address"])
 
@@ -101,7 +101,7 @@ public struct ImageSummary: Identifiable, Sendable, Hashable {
         let repo = raw.firstString(forKeys: ["repository", "repo", "name", "image", "reference"]) ?? ""
         let tag = raw.firstString(forKeys: ["tag", "tags"]) ?? ""
         let size = raw.firstString(forKeys: ["size", "virtualsize", "disk"])
-        let createdAt = raw.firstString(forKeys: ["createdat", "created_at", "created", "age"])
+        let createdAt = raw.firstString(forKeys: ["createdat", "created_at", "created", "age", "createdsince"])
 
         self.init(id: id, repository: repo, tag: tag, size: size, createdAt: createdAt, raw: raw)
     }

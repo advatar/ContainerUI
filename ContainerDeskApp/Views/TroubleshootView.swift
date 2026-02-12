@@ -47,7 +47,7 @@ struct TroubleshootView: View {
                     Text("Quick checks")
                         .font(.headline)
 
-                    Text("• Try: `container system status`\n• If commands fail from the app but work in Terminal, it’s usually PATH. (This starter searches common locations like /opt/homebrew/bin.)\n• If DNS domain commands fail, they may require admin privileges.")
+                    Text("• Try: `docker info`\n• If commands fail from the app but work in Terminal, it’s usually PATH.\n• For Docker Desktop lifecycle commands, try: `docker desktop start` / `docker desktop stop`.")
                         .textSelection(.enabled)
                         .font(.system(.body, design: .monospaced))
                 }
@@ -60,6 +60,7 @@ struct TroubleshootView: View {
         }
         .padding()
         .navigationTitle("Troubleshoot")
+        .accessibilityIdentifier("screen-troubleshoot")
         .sheet(isPresented: $showingSystemLogs) {
             NavigationStack {
                 LogViewer(title: "System Logs", makeStream: { await engine.systemLogs(follow: true) })

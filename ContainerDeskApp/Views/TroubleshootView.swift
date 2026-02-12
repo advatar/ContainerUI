@@ -47,7 +47,7 @@ struct TroubleshootView: View {
                     Text("Quick checks")
                         .font(.headline)
 
-                    Text("• Try: `docker info`\n• If commands fail from the app but work in Terminal, it’s usually PATH.\n• For Docker Desktop lifecycle commands, try: `docker desktop start` / `docker desktop stop`.")
+                    Text("• Try: `container system status`\n• If commands fail from the app but work in Terminal, it’s usually PATH.\n• For service lifecycle, try: `container system start` / `container system stop`.")
                         .textSelection(.enabled)
                         .font(.system(.body, design: .monospaced))
                 }

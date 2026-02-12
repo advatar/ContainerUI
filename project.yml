@@ -22,6 +22,9 @@ targets:
     type: application
     platform: macOS
     deploymentTarget: "26.2"
+    settings:
+      base:
+        INFOPLIST_KEY_NSAppleEventsUsageDescription: "Used to open Terminal and run container exec commands."
     sources:
       - path: ContainerDeskApp
     dependencies:

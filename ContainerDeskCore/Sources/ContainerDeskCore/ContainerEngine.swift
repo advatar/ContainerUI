@@ -4,7 +4,7 @@ public actor ContainerEngine {
     private let runner: ProcessRunner
     public let executableNameOrPath: String
 
-    public init(containerPath: String = "docker") {
+    public init(containerPath: String = "container") {
         self.executableNameOrPath = containerPath
         self.runner = ProcessRunner(executableNameOrPath: containerPath)
     }
@@ -49,26 +49,26 @@ public actor ContainerEngine {
 
     public func systemStart() async throws {
         _ = try await runFirstSuccessful([
-            ["desktop", "start"],
-            ["system", "start"]
+            ["system", "start"],
+            ["desktop", "start"]
         ])
     }
 
     public func systemStop() async throws {
         _ = try await runFirstSuccessful([
-            ["desktop", "stop"],
-            ["system", "stop"]
+            ["system", "stop"],
+            ["desktop", "stop"]
         ])
     }
 
     public func systemStatus() async throws -> SystemStatus {
         let res = try await runFirstSuccessful([
-            ["info", "--format", "{{json .}}"],
-            ["info", "--format", "json"],
-            ["info"],
             ["system", "status", "--format", "json"],
             ["system", "status", "--json"],
-            ["system", "status"]
+            ["system", "status"],
+            ["info", "--format", "{{json .}}"],
+            ["info", "--format", "json"],
+            ["info"]
         ])
 
         if let obj = decodeJSONObject(res.stdout) {
@@ -89,17 +89,17 @@ public actor ContainerEngine {
     }
 
     public func systemLogs(follow: Bool = true) -> AsyncThrowingStream<OutputLine, Error> {
+        var systemLogs = ["system", "logs"]
+        if follow {
+            systemLogs.append("--follow")
+        }
+
         var dockerEvents = ["events"]
         if !follow {
             dockerEvents += ["--since", "10m"]
         }
 
-        var legacyLogs = ["system", "logs"]
-        if follow {
-            legacyLogs.append("--follow")
-        }
-
-        return streamFirstSuccessful([dockerEvents, legacyLogs])
+        return streamFirstSuccessful([systemLogs, dockerEvents])
     }
 
     // MARK: - Containers
@@ -109,38 +109,38 @@ public actor ContainerEngine {
 
         if all {
             candidates += [
-                ["ps", "--all", "--format", "{{json .}}"],
-                ["ps", "-a", "--format", "{{json .}}"],
-                ["container", "ls", "--all", "--format", "{{json .}}"],
-                ["container", "ls", "-a", "--format", "{{json .}}"],
                 ["list", "--all", "--format", "json"],
                 ["ls", "--all", "--format", "json"],
                 ["list", "-a", "--format", "json"],
                 ["ls", "-a", "--format", "json"],
+                ["ps", "--all", "--format", "{{json .}}"],
+                ["ps", "-a", "--format", "{{json .}}"],
+                ["container", "ls", "--all", "--format", "{{json .}}"],
+                ["container", "ls", "-a", "--format", "{{json .}}"],
             ]
         } else {
             candidates += [
-                ["ps", "--format", "{{json .}}"],
-                ["container", "ls", "--format", "{{json .}}"],
                 ["list", "--format", "json"],
                 ["ls", "--format", "json"],
+                ["ps", "--format", "{{json .}}"],
+                ["container", "ls", "--format", "{{json .}}"],
             ]
         }
 
         if all {
             candidates += [
-                ["ps", "-a"],
-                ["container", "ls", "-a"],
                 ["list", "--all"],
                 ["list", "-a"],
                 ["ls", "-a"],
+                ["ps", "-a"],
+                ["container", "ls", "-a"],
             ]
         } else {
             candidates += [
-                ["ps"],
-                ["container", "ls"],
                 ["list"],
                 ["ls"],
+                ["ps"],
+                ["container", "ls"],
             ]
         }
 
@@ -155,22 +155,22 @@ public actor ContainerEngine {
 
     public func startContainer(id: String) async throws {
         _ = try await runFirstSuccessful([
-            ["container", "start", id],
-            ["start", id]
+            ["start", id],
+            ["container", "start", id]
         ])
     }
 
     public func stopContainer(id: String) async throws {
         _ = try await runFirstSuccessful([
-            ["container", "stop", id],
-            ["stop", id]
+            ["stop", id],
+            ["container", "stop", id]
         ])
     }
 
     public func killContainer(id: String) async throws {
         _ = try await runFirstSuccessful([
-            ["container", "kill", id],
-            ["kill", id]
+            ["kill", id],
+            ["container", "kill", id]
         ])
     }
 
@@ -187,43 +187,43 @@ public actor ContainerEngine {
         if force { legacyDelete.append("--force") }
         legacyDelete.append(id)
 
-        _ = try await runFirstSuccessful([containerRM, rm, legacyDelete])
+        _ = try await runFirstSuccessful([legacyDelete, containerRM, rm])
     }
 
     public func inspectContainer(id: String) async throws -> String {
         let res = try await runFirstSuccessful([
+            ["inspect", id, "--format", "json"],
+            ["inspect", id],
             ["container", "inspect", id, "--format", "json"],
             ["container", "inspect", id],
-            ["inspect", id, "--format", "json"],
-            ["inspect", id]
         ])
         return res.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     public func containerLogs(id: String, follow: Bool = true, boot: Bool = false) -> AsyncThrowingStream<OutputLine, Error> {
-        var dockerArgs = ["logs"]
-        if follow { dockerArgs.append("--follow") }
-        dockerArgs.append(id)
-
         var legacyArgs = ["logs"]
         if follow { legacyArgs.append("--follow") }
         if boot { legacyArgs.append("--boot") }
         legacyArgs.append(id)
 
-        return streamFirstSuccessful([dockerArgs, legacyArgs])
+        var dockerArgs = ["logs"]
+        if follow { dockerArgs.append("--follow") }
+        dockerArgs.append(id)
+
+        return streamFirstSuccessful([legacyArgs, dockerArgs])
     }
 
     // MARK: - Images
 
     public func listImages() async throws -> [ImageSummary] {
         let res = try await runFirstSuccessful([
-            ["images", "--format", "{{json .}}"],
-            ["image", "ls", "--format", "{{json .}}"],
             ["image", "list", "--format", "json"],
             ["image", "ls", "--format", "json"],
-            ["images"],
+            ["images", "--format", "{{json .}}"],
+            ["image", "ls", "--format", "{{json .}}"],
             ["image", "list"],
-            ["image", "ls"]
+            ["image", "ls"],
+            ["images"]
         ])
 
         if let list = decodeJSONArrayOfObjects(res.stdout) ?? decodeJSONObjectsFromLines(res.stdout) {
@@ -234,8 +234,8 @@ public actor ContainerEngine {
 
     public func pullImage(_ reference: String) async throws {
         _ = try await runFirstSuccessful([
-            ["pull", reference],
-            ["image", "pull", reference]
+            ["image", "pull", reference],
+            ["pull", reference]
         ])
     }
 
@@ -252,7 +252,7 @@ public actor ContainerEngine {
         if force { imageDelete.append("--force") }
         imageDelete.append(referenceOrID)
 
-        _ = try await runFirstSuccessful([rmi, imageRM, imageDelete])
+        _ = try await runFirstSuccessful([imageDelete, imageRM, rmi])
     }
 
     public func inspectImage(_ referenceOrID: String) async throws -> String {
@@ -269,13 +269,13 @@ public actor ContainerEngine {
 
     public func builderStatus() async throws -> BuilderStatus {
         let res = try await runFirstSuccessful([
-            ["buildx", "ls", "--format", "{{json .}}"],
-            ["builder", "ls", "--format", "{{json .}}"],
-            ["buildx", "ls"],
-            ["builder", "ls"],
             ["builder", "status", "--json"],
             ["builder", "status", "--format", "json"],
-            ["builder", "status"]
+            ["builder", "status"],
+            ["builder", "ls", "--format", "{{json .}}"],
+            ["builder", "ls"],
+            ["buildx", "ls", "--format", "{{json .}}"],
+            ["buildx", "ls"],
         ])
 
         if let obj = decodeJSONObject(res.stdout) {

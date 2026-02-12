@@ -1,7 +1,7 @@
 import SwiftUI
 import ContainerDeskCore
 
-enum NavItem: String, CaseIterable, Identifiable {
+enum NavItem: String, CaseIterable, Identifiable, Hashable {
     case dashboard = "Dashboard"
     case containers = "Containers"
     case images = "Images"

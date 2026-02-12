@@ -72,7 +72,7 @@ struct ContainersView: View {
 
                 if let selected = selectedContainer {
                     Button {
-                        TerminalLauncher.runInTerminal("docker exec -it \(selected.id) /bin/sh")
+                        TerminalLauncher.runInTerminal("container exec -it \(selected.id) /bin/sh")
                     } label: {
                         Label("Exec", systemImage: "terminal")
                     }
@@ -243,7 +243,7 @@ struct ContainersView: View {
         Divider()
 
         Button("Exec in Terminal") {
-            TerminalLauncher.runInTerminal("docker exec -it \(c.id) /bin/sh")
+            TerminalLauncher.runInTerminal("container exec -it \(c.id) /bin/sh")
         }
 
         Button("Delete", role: .destructive) {

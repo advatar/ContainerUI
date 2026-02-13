@@ -14,3 +14,4 @@
 - Verify with `swift test` and `xcodebuild test`.
 - Implement CR-001 alignment updates for the container-first MVP (imports/hashability fixes, `container exec` terminal actions, Apple Events usage description, and verification).
 - Add Docker API-compatible command translation on top of Apple `container` and implement a dedicated Compose workflow/UI.
+- Add automated Docker CLI compatibility contract tests using a fake `container` executable (command mapping order, fallback behavior, and Compose fallback) and fix non-fallback error handling in the compatibility runner.

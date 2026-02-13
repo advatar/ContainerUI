@@ -87,6 +87,17 @@ public actor ContainerEngine {
                 }
 
                 return result
+            } catch let error as ProcessRunnerError {
+                switch error {
+                case .commandFailed(_, _, _, let stderr):
+                    lastError = error
+                    if isCompatibilityFallbackWorthy(stderr: stderr) {
+                        continue
+                    }
+                    throw error
+                default:
+                    lastError = error
+                }
             } catch {
                 lastError = error
             }

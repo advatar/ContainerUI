@@ -13,3 +13,4 @@
 - Expand tests with app-level unit tests and dedicated UI-surface tests.
 - Verify with `swift test` and `xcodebuild test`.
 - Implement CR-001 alignment updates for the container-first MVP (imports/hashability fixes, `container exec` terminal actions, Apple Events usage description, and verification).
+- Add Docker API-compatible command translation on top of Apple `container` and implement a dedicated Compose workflow/UI.

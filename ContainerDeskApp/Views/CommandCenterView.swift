@@ -35,10 +35,10 @@ struct CommandCenterView: View {
             .frame(minWidth: 320, idealWidth: 380)
 
             VStack(alignment: .leading, spacing: 12) {
-                Text("Docker CLI Command Center")
+                Text("Docker API-Compatible Command Center")
                     .font(.title2.bold())
 
-                Text("Every Docker CLI command is accessible here. Use the command catalog on the left or type any command directly.")
+                Text("Run Docker-compatible commands through the Apple container backend. Use the catalog on the left or type any command directly.")
                     .foregroundStyle(.secondary)
 
                 TextField("docker ps --all", text: $vm.commandInput)

@@ -22,13 +22,13 @@ struct SettingsView: View {
             }
 
             Section("Storage") {
-                Text("Docker Desktop data is typically managed by Docker Desktop VM layers and user config under:\n~/.docker")
+                Text("Apple container data and config are managed by the `container` runtime and user-level configuration paths.")
                     .font(.system(.body, design: .monospaced))
                     .textSelection(.enabled)
             }
 
             Section("Advanced") {
-                Text("Future: choose Docker CLI binary path, configure registry defaults, and tune resource limits.")
+                Text("Future: choose container binary path, configure compatibility behavior, and tune resource limits.")
                     .foregroundStyle(.secondary)
             }
         }

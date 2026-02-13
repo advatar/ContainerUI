@@ -44,6 +44,15 @@ enum DockerCommandCatalog {
             DockerCommand(name: "system", summary: "Manage Docker", example: "system df"),
             DockerCommand(name: "volume", summary: "Manage volumes", example: "volume ls"),
         ]),
+        DockerCommandSection(title: "Compose", commands: [
+            DockerCommand(name: "compose up", summary: "Create and start services from compose file", example: "compose up -d"),
+            DockerCommand(name: "compose down", summary: "Stop and remove compose services", example: "compose down"),
+            DockerCommand(name: "compose ps", summary: "List compose services", example: "compose ps"),
+            DockerCommand(name: "compose logs", summary: "Stream compose logs", example: "compose logs --follow"),
+            DockerCommand(name: "compose pull", summary: "Pull images referenced by compose services", example: "compose pull"),
+            DockerCommand(name: "compose build", summary: "Build compose services", example: "compose build"),
+            DockerCommand(name: "compose config", summary: "Render the effective compose config", example: "compose config"),
+        ]),
         DockerCommandSection(title: "Swarm", commands: [
             DockerCommand(name: "config", summary: "Manage Swarm configs", example: "config ls"),
             DockerCommand(name: "node", summary: "Manage Swarm nodes", example: "node ls"),
@@ -142,8 +151,8 @@ final class CommandCenterViewModel: ObservableObject {
 
         do {
             let arguments = try Self.normalizedArguments(from: commandInput)
-            let result = try await engine.runCommand(arguments, checkExitCode: false)
-            outputText = render(result)
+            let result = try await engine.runDockerCompatibleCommand(arguments, checkExitCode: false)
+            outputText = render(requestedArguments: arguments, result: result)
 
             if result.exitCode == 0 {
                 errorMessage = nil
@@ -174,16 +183,17 @@ final class CommandCenterViewModel: ObservableObject {
         guard !streamArguments.isEmpty else {
             return Self.failedStream(CommandCenterError.emptyCommand)
         }
-        return await engine.streamCommand(streamArguments)
+        return await engine.streamDockerCompatibleCommand(streamArguments)
     }
 
     var streamTitle: String {
         "Stream: docker \(streamArguments.joined(separator: " "))"
     }
 
-    private func render(_ result: CommandResult) -> String {
+    private func render(requestedArguments: [String], result: CommandResult) -> String {
         var lines: [String] = []
-        lines.append("$ docker \(result.arguments.joined(separator: " "))")
+        lines.append("$ docker \(requestedArguments.joined(separator: " "))")
+        lines.append("executed: \(result.command) \(result.arguments.joined(separator: " "))")
         lines.append("exit code: \(result.exitCode)")
         lines.append(String(format: "duration: %.2fs", result.duration))
 

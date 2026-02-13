@@ -45,6 +45,128 @@ public actor ContainerEngine {
         runner.streamLines(arguments, workingDirectory: workingDirectory, environment: environment)
     }
 
+    /// Runs docker-compatible arguments by translating them to Apple `container` command equivalents.
+    public func runDockerCompatibleCommand(
+        _ dockerArguments: [String],
+        workingDirectory: URL? = nil,
+        environment: [String: String] = [:],
+        checkExitCode: Bool = true
+    ) async throws -> CommandResult {
+        guard !dockerArguments.isEmpty else {
+            throw ProcessRunnerError.failedToStart("No command provided.")
+        }
+
+        let candidates = dockerCompatibleCandidates(for: dockerArguments)
+        var lastFailure: CommandResult?
+        var lastError: Error?
+
+        for args in candidates {
+            do {
+                let result = try await runner.run(
+                    args,
+                    workingDirectory: workingDirectory,
+                    environment: environment
+                )
+
+                if result.exitCode == 0 {
+                    return result
+                }
+
+                lastFailure = result
+                if isCompatibilityFallbackWorthy(stderr: result.stderr) {
+                    continue
+                }
+
+                if checkExitCode {
+                    throw ProcessRunnerError.commandFailed(
+                        command: result.command,
+                        arguments: result.arguments,
+                        exitCode: result.exitCode,
+                        stderr: result.stderr
+                    )
+                }
+
+                return result
+            } catch {
+                lastError = error
+            }
+        }
+
+        if let lastFailure {
+            if checkExitCode {
+                throw ProcessRunnerError.commandFailed(
+                    command: lastFailure.command,
+                    arguments: lastFailure.arguments,
+                    exitCode: lastFailure.exitCode,
+                    stderr: lastFailure.stderr
+                )
+            }
+            return lastFailure
+        }
+
+        throw lastError ?? ProcessRunnerError.failedToStart("No compatibility candidates matched.")
+    }
+
+    /// Streams docker-compatible arguments by translating them to Apple `container` command equivalents.
+    public func streamDockerCompatibleCommand(
+        _ dockerArguments: [String],
+        workingDirectory: URL? = nil,
+        environment: [String: String] = [:]
+    ) -> AsyncThrowingStream<OutputLine, Error> {
+        let candidates = dockerCompatibleCandidates(for: dockerArguments)
+
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                var lastError: Error?
+
+                for args in candidates {
+                    if Task.isCancelled {
+                        continuation.finish()
+                        return
+                    }
+
+                    do {
+                        let stream = runner.streamLines(
+                            args,
+                            workingDirectory: workingDirectory,
+                            environment: environment
+                        )
+                        for try await line in stream {
+                            if Task.isCancelled {
+                                continuation.finish()
+                                return
+                            }
+                            continuation.yield(line)
+                        }
+
+                        continuation.finish()
+                        return
+                    } catch let error as ProcessRunnerError {
+                        switch error {
+                        case .commandFailed(_, _, _, let stderr):
+                            if isCompatibilityFallbackWorthy(stderr: stderr) {
+                                lastError = error
+                                continue
+                            }
+                            continuation.finish(throwing: error)
+                            return
+                        default:
+                            lastError = error
+                        }
+                    } catch {
+                        lastError = error
+                    }
+                }
+
+                continuation.finish(throwing: lastError ?? ProcessRunnerError.failedToStart("No compatibility candidates matched."))
+            }
+
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+    }
+
     // MARK: - System
 
     public func systemStart() async throws {
@@ -325,6 +447,200 @@ public actor ContainerEngine {
             ["buildx", "stop", "default"],
             ["builder", "stop"]
         ])
+    }
+
+    // MARK: - Docker Compatibility Translation
+
+    private func dockerCompatibleCandidates(for dockerArguments: [String]) -> [[String]] {
+        guard let head = dockerArguments.first else { return [] }
+        let tail = Array(dockerArguments.dropFirst())
+
+        let mapped: [[String]]
+        switch head.lowercased() {
+        case "ps":
+            mapped = [
+                ["list"] + tail,
+                ["ls"] + tail,
+                ["ps"] + tail,
+            ]
+        case "images":
+            mapped = [
+                ["image", "list"] + tail,
+                ["image", "ls"] + tail,
+                ["images"] + tail,
+            ]
+        case "rm":
+            mapped = [
+                ["delete"] + tail,
+                ["rm"] + tail,
+            ]
+        case "rmi":
+            mapped = [
+                ["image", "delete"] + tail,
+                ["image", "rm"] + tail,
+                ["rmi"] + tail,
+            ]
+        case "info":
+            mapped = [
+                ["system", "status"],
+                ["info"] + tail,
+            ]
+        case "compose":
+            mapped = [
+                ["compose"] + tail,
+                ["system", "compose"] + tail,
+            ]
+        case "container":
+            mapped = dockerCompatibleContainerSubcommands(tail)
+        case "image":
+            mapped = dockerCompatibleImageSubcommands(tail)
+        case "system":
+            mapped = dockerCompatibleSystemSubcommands(tail)
+        case "buildx", "builder":
+            mapped = dockerCompatibleBuilderSubcommands(head: head, tail: tail)
+        default:
+            mapped = [dockerArguments]
+        }
+
+        return deduplicateCandidates(mapped + [dockerArguments])
+    }
+
+    private func dockerCompatibleContainerSubcommands(_ tail: [String]) -> [[String]] {
+        guard let sub = tail.first?.lowercased() else {
+            return [["list"], ["ls"], ["container", "ls"]]
+        }
+
+        let rest = Array(tail.dropFirst())
+        switch sub {
+        case "ls", "list", "ps":
+            return [
+                ["list"] + rest,
+                ["ls"] + rest,
+                ["container", "ls"] + rest,
+            ]
+        case "rm", "delete":
+            return [
+                ["delete"] + rest,
+                ["container", "rm"] + rest,
+                ["rm"] + rest,
+            ]
+        case "inspect", "start", "stop", "kill", "logs", "exec", "cp", "diff", "restart", "wait":
+            return [
+                [sub] + rest,
+                ["container", sub] + rest,
+            ]
+        default:
+            return [
+                ["container"] + tail,
+                [sub] + rest,
+            ]
+        }
+    }
+
+    private func dockerCompatibleImageSubcommands(_ tail: [String]) -> [[String]] {
+        guard let sub = tail.first?.lowercased() else {
+            return [["image", "list"], ["image", "ls"]]
+        }
+
+        let rest = Array(tail.dropFirst())
+        switch sub {
+        case "ls", "list":
+            return [
+                ["image", "list"] + rest,
+                ["image", "ls"] + rest,
+                ["images"] + rest,
+            ]
+        case "rm", "rmi", "delete":
+            return [
+                ["image", "delete"] + rest,
+                ["image", "rm"] + rest,
+                ["rmi"] + rest,
+            ]
+        case "pull", "inspect":
+            return [
+                ["image", sub] + rest,
+                [sub] + rest,
+            ]
+        default:
+            return [["image"] + tail]
+        }
+    }
+
+    private func dockerCompatibleSystemSubcommands(_ tail: [String]) -> [[String]] {
+        guard let sub = tail.first?.lowercased() else {
+            return [["system", "status"], ["info"]]
+        }
+
+        let rest = Array(tail.dropFirst())
+        switch sub {
+        case "start", "stop", "status", "logs":
+            return [
+                ["system", sub] + rest,
+            ]
+        default:
+            return [
+                ["system"] + tail,
+                ["info"],
+            ]
+        }
+    }
+
+    private func dockerCompatibleBuilderSubcommands(head: String, tail: [String]) -> [[String]] {
+        guard let sub = tail.first?.lowercased() else {
+            return [
+                ["builder", "status"],
+                ["buildx", "ls"],
+            ]
+        }
+
+        let rest = Array(tail.dropFirst())
+        switch sub {
+        case "ls", "list":
+            return [
+                ["builder", "status"],
+                ["builder", "ls"] + rest,
+                ["buildx", "ls"] + rest,
+            ]
+        case "stop":
+            return [
+                ["builder", "stop"] + rest,
+                ["buildx", "stop"] + rest,
+            ]
+        case "start":
+            return [
+                ["builder", "start"] + rest,
+                ["buildx", "inspect", "--bootstrap"],
+            ]
+        default:
+            return [
+                [head] + tail,
+                ["builder"] + tail,
+                ["buildx"] + tail,
+            ]
+        }
+    }
+
+    private func deduplicateCandidates(_ candidates: [[String]]) -> [[String]] {
+        var seen = Set<String>()
+        var unique: [[String]] = []
+
+        for args in candidates where !args.isEmpty {
+            let key = args.joined(separator: "\u{1F}")
+            if seen.insert(key).inserted {
+                unique.append(args)
+            }
+        }
+
+        return unique
+    }
+
+    private func isCompatibilityFallbackWorthy(stderr: String) -> Bool {
+        let lower = stderr.lowercased()
+        return lower.contains("unknown command")
+            || lower.contains("no such command")
+            || lower.contains("unknown shorthand flag")
+            || lower.contains("unknown flag")
+            || lower.contains("flag provided but not defined")
     }
 
     // MARK: - Helpers

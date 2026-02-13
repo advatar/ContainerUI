@@ -5,13 +5,13 @@ import XCTest
 final class ContainerDeskUITests: XCTestCase {
     func testSidebarNavigationMatchesDesktopStructure() {
         let allCases = NavItem.allCases
-        let expectedCases: [NavItem] = [.dashboard, .containers, .images, .builds, .dockerCLI, .troubleshoot, .settings]
+        let expectedCases: [NavItem] = [.dashboard, .containers, .images, .builds, .compose, .dockerCLI, .troubleshoot, .settings]
         XCTAssertEqual(allCases, expectedCases)
 
         let names = allCases.map { item in
             item.rawValue
         }
-        XCTAssertEqual(names, ["Dashboard", "Containers", "Images", "Builds", "Docker CLI", "Troubleshoot", "Settings"])
+        XCTAssertEqual(names, ["Dashboard", "Containers", "Images", "Builds", "Compose", "Docker CLI", "Troubleshoot", "Settings"])
     }
 
     func testSidebarNavigationUsesStableIdentifiersAndSymbols() {
@@ -28,7 +28,7 @@ final class ContainerDeskUITests: XCTestCase {
         let sectionTitles = DockerCommandCatalog.sections.map { section in
             section.title
         }
-        XCTAssertEqual(sectionTitles, ["Common", "Management", "Swarm", "Runtime"])
+        XCTAssertEqual(sectionTitles, ["Common", "Management", "Compose", "Swarm", "Runtime"])
     }
 
     func testCommandCenterIncludesCoreDockerDesktopCommands() {
@@ -42,6 +42,7 @@ final class ContainerDeskUITests: XCTestCase {
         let expected = [
             "run", "exec", "ps", "build", "pull", "push", "images", "login", "logout", "search", "version", "info",
             "compose", "container", "context", "image", "network", "system", "volume",
+            "compose up", "compose down", "compose ps", "compose logs",
             "config", "node", "secret", "service", "stack", "swarm",
             "logs", "stats", "top", "events", "inspect"
         ]

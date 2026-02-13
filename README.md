@@ -1,6 +1,6 @@
-# ContainerDesk Starter (Docker Desktop-Style UI)
+# ContainerDesk Starter (Apple Container + Docker-Compatible API)
 
-This is a **starter codebase** for a macOS SwiftUI app that provides a Docker-Desktop-like experience on top of the Docker CLI (`docker`), with compatibility fallbacks for Apple `container` commands where practical.
+This is a **starter codebase** for a macOS SwiftUI app that provides a Docker-Desktop-like experience on top of Apple `container`, while accepting Docker-style commands through a compatibility layer.
 
 ## What you get today
 
@@ -9,8 +9,9 @@ This is a **starter codebase** for a macOS SwiftUI app that provides a Docker-De
 - **Containers**: list, start, stop, delete, inspect, logs (follow), exec (opens Terminal)
 - **Images**: list, pull, delete, inspect
 - **Builder**: status (JSON when available), start/stop (hooks ready)
+- **Compose**: dedicated Compose page (up/down/ps/pull/build/logs) routed through compatibility commands
 - **Troubleshoot**: stream daemon-level events/log output
-- **Docker CLI parity surface**: run or stream arbitrary Docker commands from an in-app command center, with command catalog coverage for common, management, swarm, and runtime command groups
+- **Docker API-compatible command center**: run or stream Docker-style commands (`docker ...`) against the Apple container backend, with command catalog coverage for common, management, compose, swarm, and runtime groups
 
 ### UI included
 - Sidebar navigation (Dashboard, Containers, Images, Builds, Troubleshoot, Settings)
@@ -26,7 +27,7 @@ This starter intentionally focuses on a **small MVP** and a clean architecture s
 
 - macOS **26.2+**
 - Apple silicon
-- Docker CLI installed and working (try `docker info` in Terminal)
+- Apple `container` CLI installed and working (try `container system status` in Terminal)
 
 > Note: Some Docker Desktop lifecycle and privileged operations may require elevated permissions.
 
@@ -68,7 +69,7 @@ xcodebuild test \
 ---
 
 ## Roadmap (next steps to build from here)
-- Compose “apps” (compose.yaml parser → translate into `container build/run/network`)
+- Compose model introspection (service-level status cards and structured logs)
 - Volumes & Networks pages (feature-detect if the user’s `container` supports them)
 - Privileged helper (DNS domain management UI)
 - Diagnostics bundle export (zip logs + json snapshots)
